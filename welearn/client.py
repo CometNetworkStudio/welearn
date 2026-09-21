@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-from core import http
+from omnitask_sdk import http
 from .crypto import generate_cipher_text
 
 BASE_URL = "https://welearn.sflep.com"

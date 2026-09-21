@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import time
 
-from core.config import Config
-from core.events import event
-from core.params import resolve
-from core.ratelimit import RateLimiter
+from omnitask_sdk.config import Config
+from omnitask_sdk.events import event
+from omnitask_sdk.params import resolve
+from omnitask_sdk.ratelimit import RateLimiter
 from .client import WeLearnClient, WeLearnError
 
 _CONFIG = Config.from_env()
