@@ -6,21 +6,86 @@
   "runtime": "python3",
   "entry": "main.py",
   "args": [],
-  "requires": ["requests"],
+  "requires": [
+    "requests"
+  ],
   "actions": [
-    { "id": "time", "name": "挂时长" },
-    { "id": "progress", "name": "提交进度" }
+    {
+      "id": "time",
+      "name": "挂时长"
+    },
+    {
+      "id": "progress",
+      "name": "提交进度"
+    }
   ],
   "credentials": [
-    { "key": "username", "label": "账号", "type": "text" },
-    { "key": "password", "label": "密码", "type": "password" }
+    {
+      "key": "username",
+      "label": "账号",
+      "type": "text"
+    },
+    {
+      "key": "password",
+      "label": "密码",
+      "type": "password"
+    }
   ],
   "params": [
-    { "key": "cid", "label": "课程 id", "type": "text", "default": "" },
-    { "key": "unit_idx", "label": "单元下标(0起，空=全部)", "type": "text", "default": "" },
-    { "key": "duration", "label": "挂时长(秒)", "type": "number", "default": 60 },
-    { "key": "accuracy", "label": "正确率", "type": "number", "default": 100 },
-    { "key": "include_completed", "label": "含已完成 SCO", "type": "switch", "default": false },
-    { "key": "limit", "label": "最多 SCO 数(0=不限)", "type": "number", "default": 0 }
-  ]
+    {
+      "key": "cid",
+      "label": "课程 id",
+      "type": "text",
+      "default": ""
+    },
+    {
+      "key": "unit_idx",
+      "label": "单元下标(0起，空=全部)",
+      "type": "text",
+      "default": ""
+    },
+    {
+      "key": "duration",
+      "label": "挂时长(秒)",
+      "type": "number",
+      "default": 60
+    },
+    {
+      "key": "accuracy",
+      "label": "正确率",
+      "type": "number",
+      "default": 100
+    },
+    {
+      "key": "include_completed",
+      "label": "含已完成 SCO",
+      "type": "switch",
+      "default": false
+    },
+    {
+      "key": "limit",
+      "label": "最多 SCO 数(0=不限)",
+      "type": "number",
+      "default": 0
+    }
+  ],
+  "discovery": {
+    "label": "课程",
+    "columns": [
+      {
+        "key": "cid",
+        "label": "课程ID",
+        "type": "text"
+      },
+      {
+        "key": "name",
+        "label": "课程名",
+        "type": "text"
+      }
+    ],
+    "actions": [
+      "time",
+      "progress"
+    ]
+  }
 }
