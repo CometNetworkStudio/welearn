@@ -86,6 +86,9 @@
     "actions": [
       "time",
       "progress"
-    ]
+    ],
+    "param_map": {
+      "cid": "cid"
+    }
   }
 }
