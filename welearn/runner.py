@@ -57,12 +57,15 @@ def _pick_course(courses: list, want) -> dict:
     raise WeLearnError(f"未找到课程 cid={want}")
 
 
-def _collect_scos(client, cid, uid, classid, units, params, action) -> tuple[list[tuple[str, str]], list[str]]:
+def _collect_scos(
+    client, cid, uid, classid, units, params, action, max_count: int = 0
+) -> tuple[list[tuple[str, str]], list[str]]:
     """收集待处理 SCO，按 id 去重。
 
     注意：WeLearn 的 unitidx 是单元的数字下标（0-based），不是单元 id；
-    传错会导致每个单元返回同一批 SCO。挂时长处理全部可见 SCO；
+    传错会导致每个单元返回同一批 SCO。挂时长只需收集够本次时长所需的 SCO；
     提交进度默认只处理未完成项，开启 include_completed 后才重提已完成项。
+    max_count > 0 时收满即停，避免为了挂 60 秒遍历整门课。
     返回 (SCO 列表, 单元错误列表)；单个单元失败不影响其他单元。
     """
     include_completed = str(params.get("include_completed", "")).lower() in ("1", "true", "yes", "on")
@@ -95,6 +98,10 @@ def _collect_scos(client, cid, uid, classid, units, params, action) -> tuple[lis
                 continue
             seen.add(entry[0])
             scos.append(entry)
+            if max_count and len(scos) >= max_count:
+                break
+        if max_count and len(scos) >= max_count:
+            break
     return scos, errors
 
 
@@ -137,12 +144,26 @@ def run(action: str, params: dict, credentials: dict):
     info = client.get_course_info(cid)
     uid, classid = info["uid"], info["classid"]
 
-    scos, unit_errors = _collect_scos(client, cid, uid, classid, info["units"], resolved, action)
+    limit = _as_int(resolved.get("limit"), 0)
+    total_duration = max(0, _as_int(resolved.get("duration"), 60))
+    # 挂时长不遍历整门课：按 60 秒一个 SCO 估算所需数量；limit 仍是最多 SCO 数。
+    target_count = 0
+    if action == "time":
+        target_count = max(1, (total_duration + 59) // 60)
+        if limit > 0:
+            target_count = min(target_count, limit)
+    elif limit > 0:
+        target_count = limit
+
+    scos, unit_errors = _collect_scos(
+        client, cid, uid, classid, info["units"], resolved, action, max_count=target_count
+    )
     for err in unit_errors:
         yield event(6, f"[警告] {err}")
-    limit = _as_int(resolved.get("limit"), 0)
     if limit > 0:
         scos = scos[:limit]
+    if action == "time" and target_count > 0:
+        scos = scos[:target_count]
     if not scos:
         if unit_errors:
             raise WeLearnError(f"获取 SCO 失败: {unit_errors[0]}")
@@ -153,9 +174,11 @@ def run(action: str, params: dict, credentials: dict):
         )
         return
 
-    total_duration = max(0, _as_int(resolved.get("duration"), 60))
     seconds_base, seconds_extra = divmod(total_duration, len(scos))
-    yield event(8, f"待处理 SCO 数 {len(scos)}，总挂时长 {total_duration}s")
+    if action == "time":
+        yield event(8, f"本次挂时长 {total_duration}s，处理 {len(scos)} 个 SCO")
+    else:
+        yield event(8, f"待处理 SCO 数 {len(scos)}")
     accuracy = str(resolved.get("accuracy", 100) or 100)
     succeeded = 0
     failed: list[tuple[str, object]] = []

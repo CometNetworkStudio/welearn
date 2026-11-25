@@ -1,7 +1,7 @@
 {
   "id": "welearn",
   "name": "WeLearn",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "author": "CometNetworkStudio",
   "runtime": "python3",
   "entry": "main.py",
@@ -13,7 +13,7 @@
     {
       "id": "time",
       "name": "挂时长",
-      "description": "处理全部可见 SCO，按设定秒数模拟学习并保存",
+      "description": "按本次总时长选择所需 SCO 模拟学习并保存",
       "params": [
         {
           "key": "cid",
@@ -34,7 +34,7 @@
           "label": "挂时长(秒)",
           "type": "number",
           "default": 60,
-          "help": "本次任务的总挂时长，均分到所有 SCO"
+          "help": "本次任务的总挂时长，均分到本次处理的 SCO"
         },
         {
           "key": "limit",
@@ -119,7 +119,7 @@
       "label": "挂时长(秒)",
       "type": "number",
       "default": 60,
-      "help": "本次任务的总挂时长，均分到所有 SCO"
+      "help": "本次任务的总挂时长，均分到本次处理的 SCO"
     },
     {
       "key": "accuracy",
