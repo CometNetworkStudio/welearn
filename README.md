@@ -8,7 +8,7 @@ WeLearn（welearn.sflep.com）自动挂时长 / 提交进度脚本，适配 [Omn
 
 - 登录后自动完成课程 SCO 的「挂时长」或「提交进度」。
 - 发现列表返回课程名、进度、状态、学习时长与练习统计，OmniTask 按 manifest 中的 `important` 标记决定表格展示哪些字段。
-- 挂时长处理全部可见 SCO；提交进度默认只处理未完成 SCO，可开启含已完成项。
+- 挂时长处理全部可见 SCO；`duration` 是本次任务总时长，均分到本次处理的 SCO。提交进度默认只处理未完成 SCO，可开启含已完成项。
 - 支持按课程 / 单元 / 数量限制选择。
 - 既可被 OmniTask 以子进程（stdio JSON）调用，也可本地 CLI 单跑。
 
@@ -46,7 +46,7 @@ OmniTask 的 Go Host 以子进程启动 `main.py`，经 stdin 下发 `execute`�
 |---|---|---|
 | `cid` | 空(第一门课) | 课程 id |
 | `unit_idx` | 空(全部) | 单元数字下标（0 起） |
-| `duration` | 60 | 挂时长秒数（`action=time`） |
+| `duration` | 60 | 本次任务总挂时长（秒），均分到本次处理的 SCO |
 | `accuracy` | 100 | 提交进度正确率（`action=progress`） |
 | `include_completed` | false | 提交进度时是否重提已完成 SCO（挂时长始终处理全部可见 SCO） |
 | `limit` | 0 | 最多 SCO 数，0=不限 |

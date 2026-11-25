@@ -152,15 +152,17 @@ def run(action: str, params: dict, credentials: dict):
             {"total": 0, "succeeded": 0, "failed": 0, "units_failed": 0},
         )
         return
-    yield event(8, f"待处理 SCO 数 {len(scos)}")
 
-    duration = max(1, _as_int(resolved.get("duration"), 60))
+    total_duration = max(0, _as_int(resolved.get("duration"), 60))
+    seconds_base, seconds_extra = divmod(total_duration, len(scos))
+    yield event(8, f"待处理 SCO 数 {len(scos)}，总挂时长 {total_duration}s")
     accuracy = str(resolved.get("accuracy", 100) or 100)
     succeeded = 0
     failed: list[tuple[str, object]] = []
     for index, (scoid, name) in enumerate(scos, start=1):
         label = name or scoid
         base = (index - 1) / len(scos) * 92 + 8
+        seconds = seconds_base + (1 if index <= seconds_extra else 0)
         try:
             if action == "progress":
                 result = client.submit_course_progress(cid, uid, classid, scoid, accuracy)
@@ -173,13 +175,13 @@ def run(action: str, params: dict, credentials: dict):
                 continue
 
             client.start_sco(cid, uid, scoid)
-            for elapsed in range(1, duration + 1):
+            for elapsed in range(1, seconds + 1):
                 time.sleep(1)
                 if elapsed % 60 == 0:
                     client.keep_sco(cid, uid, scoid)
-                if elapsed % 10 == 0 or elapsed == duration:
-                    within = elapsed / duration * (92 / len(scos))
-                    yield event(_pct(base + within), f"[进行] {label} 已挂 {elapsed}s/{duration}s")
+                if elapsed % 10 == 0 or elapsed == seconds:
+                    within = elapsed / seconds * (92 / len(scos))
+                    yield event(_pct(base + within), f"[进行] {label} 已挂 {elapsed}s/{seconds}s")
             resp = client.save_sco(cid, uid, scoid)
             if ret_ok(resp):
                 succeeded += 1

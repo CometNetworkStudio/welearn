@@ -1,7 +1,7 @@
 {
   "id": "welearn",
   "name": "WeLearn",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "author": "CometNetworkStudio",
   "runtime": "python3",
   "entry": "main.py",
@@ -34,7 +34,7 @@
           "label": "挂时长(秒)",
           "type": "number",
           "default": 60,
-          "help": "每个 SCO 模拟学习的秒数"
+          "help": "本次任务的总挂时长，均分到所有 SCO"
         },
         {
           "key": "limit",
@@ -119,7 +119,7 @@
       "label": "挂时长(秒)",
       "type": "number",
       "default": 60,
-      "help": "每个 SCO 模拟学习的秒数"
+      "help": "本次任务的总挂时长，均分到所有 SCO"
     },
     {
       "key": "accuracy",
@@ -155,13 +155,15 @@
       {
         "key": "cid",
         "label": "课程ID",
-        "type": "text"
+        "type": "text",
+        "sort": "number"
       },
       {
         "key": "per",
         "label": "进度",
         "type": "progress",
-        "important": true
+        "important": true,
+        "sort": "number"
       },
       {
         "key": "state",
@@ -173,27 +175,32 @@
         "key": "study_time",
         "label": "学习时长",
         "type": "text",
-        "important": true
+        "important": true,
+        "sort": "duration"
       },
       {
         "key": "total",
         "label": "练习总数",
-        "type": "text"
+        "type": "text",
+        "sort": "number"
       },
       {
         "key": "done",
         "label": "已完成",
-        "type": "text"
+        "type": "text",
+        "sort": "number"
       },
       {
         "key": "remaining",
         "label": "待完成",
-        "type": "text"
+        "type": "text",
+        "sort": "number"
       },
       {
         "key": "avg_accuracy",
         "label": "平均正确率",
-        "type": "text"
+        "type": "text",
+        "sort": "percent"
       }
     ],
     "actions": [
