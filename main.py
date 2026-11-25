@@ -29,16 +29,33 @@ def courses(ctx):
     )
     client = WeLearnClient(username, password, _CONFIG, limiter)
     client.login()
-    return [
-        {
-            "key": str(course.get("cid") or course.get("id")),
-            "fields": {
-                "cid": str(course.get("cid") or course.get("id") or ""),
-                "name": str(course.get("cname") or course.get("name") or ""),
-            },
-        }
-        for course in client.get_courses()
-    ]
+    result = []
+    for course in client.get_courses():
+        cid = str(course.get("cid") or course.get("id") or "")
+        name = str(course.get("cname") or course.get("name") or "")
+        per = str(course.get("per") or "")
+        try:
+            percent = float(per.strip().rstrip("%"))
+        except (TypeError, ValueError):
+            percent = 0
+        if percent >= 100:
+            state = "已完成:success"
+        elif percent > 0:
+            state = "学习中:primary"
+        else:
+            state = "未开始:grey"
+        result.append(
+            {
+                "key": cid,
+                "fields": {
+                    "cid": cid,
+                    "name": name,
+                    "per": per,
+                    "state": state,
+                },
+            }
+        )
+    return result
 
 
 def main():

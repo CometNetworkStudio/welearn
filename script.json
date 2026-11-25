@@ -1,7 +1,7 @@
 {
   "id": "welearn",
   "name": "WeLearn",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "CometNetworkStudio",
   "runtime": "python3",
   "entry": "main.py",
@@ -78,16 +78,27 @@
   ],
   "discovery": {
     "label": "课程",
+    "primary": "name",
     "columns": [
+      {
+        "key": "name",
+        "label": "课程名",
+        "type": "text"
+      },
       {
         "key": "cid",
         "label": "课程ID",
         "type": "text"
       },
       {
-        "key": "name",
-        "label": "课程名",
-        "type": "text"
+        "key": "per",
+        "label": "进度",
+        "type": "progress"
+      },
+      {
+        "key": "state",
+        "label": "状态",
+        "type": "chip"
       }
     ],
     "actions": [
