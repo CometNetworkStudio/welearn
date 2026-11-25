@@ -13,6 +13,21 @@ from welearn.runner import run
 _CONFIG = Config.from_env()
 
 
+def _int(value) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _duration(hour: int, minute: int) -> str:
+    if hour and minute:
+        return f"{hour}小时{minute}分钟"
+    if hour:
+        return f"{hour}小时"
+    return f"{minute}分钟"
+
+
 @listing()
 def courses(ctx):
     """发现：列出该账号的课程（供 OmniTask 选择）。"""
@@ -44,17 +59,26 @@ def courses(ctx):
             state = "学习中:primary"
         else:
             state = "未开始:grey"
-        result.append(
-            {
-                "key": cid,
-                "fields": {
-                    "cid": cid,
-                    "name": name,
-                    "per": per,
-                    "state": state,
-                },
-            }
-        )
+        fields = {"cid": cid, "name": name, "per": per, "state": state}
+        try:
+            uid, _ = client.get_course_identity(cid)
+            stats = client.get_scogeneral(cid, uid)
+            total = _int(stats.get("Totalcount"))
+            done = _int(stats.get("Finishcount"))
+            avg = str(stats.get("ExAvgRate") or "")
+            fields.update(
+                {
+                    "total": str(total),
+                    "done": str(done),
+                    "remaining": str(max(0, total - done)),
+                    "avg_accuracy": f"{avg}%" if avg else "",
+                    "study_time": _duration(_int(stats.get("Hour")), _int(stats.get("Minute"))),
+                }
+            )
+        except Exception:
+            # 统计失败不影响课程列表本身。
+            pass
+        result.append({"key": cid, "fields": fields})
     return result
 
 

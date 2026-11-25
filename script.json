@@ -1,7 +1,7 @@
 {
   "id": "welearn",
   "name": "WeLearn",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "author": "CometNetworkStudio",
   "runtime": "python3",
   "entry": "main.py",
@@ -149,7 +149,8 @@
       {
         "key": "name",
         "label": "课程名",
-        "type": "text"
+        "type": "text",
+        "important": true
       },
       {
         "key": "cid",
@@ -159,12 +160,40 @@
       {
         "key": "per",
         "label": "进度",
-        "type": "progress"
+        "type": "progress",
+        "important": true
       },
       {
         "key": "state",
         "label": "状态",
-        "type": "chip"
+        "type": "chip",
+        "important": true
+      },
+      {
+        "key": "study_time",
+        "label": "学习时长",
+        "type": "text",
+        "important": true
+      },
+      {
+        "key": "total",
+        "label": "练习总数",
+        "type": "text"
+      },
+      {
+        "key": "done",
+        "label": "已完成",
+        "type": "text"
+      },
+      {
+        "key": "remaining",
+        "label": "待完成",
+        "type": "text"
+      },
+      {
+        "key": "avg_accuracy",
+        "label": "平均正确率",
+        "type": "text"
       }
     ],
     "actions": [

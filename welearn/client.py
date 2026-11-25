@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import random
 import re
 
 from omnitask_sdk import http
@@ -109,13 +110,17 @@ class WeLearnClient:
             raise WeLearnError("没有找到课程")
         return data["clist"]
 
-    def get_course_info(self, cid) -> dict:
+    def get_course_identity(self, cid) -> tuple[str, str]:
+        """只取 uid/classid，避免发现列表为每门课多拉一次单元。"""
         resp = self._get(f"{BASE_URL}/student/course_info.aspx", params={"cid": cid})
         uid_match = re.search(r'"uid":\s*(\d+),', resp.text)
         classid_match = re.search(r'"classid":"(\w+)"', resp.text)
         if not uid_match or not classid_match:
             raise WeLearnError("无法解析课程信息")
-        uid, classid = uid_match.group(1), classid_match.group(1)
+        return uid_match.group(1), classid_match.group(1)
+
+    def get_course_info(self, cid) -> dict:
+        uid, classid = self.get_course_identity(cid)
         data = self._get(
             f"{BASE_URL}/ajax/StudyStat.aspx",
             params={"action": "courseunits", "cid": cid, "uid": uid},
@@ -132,6 +137,19 @@ class WeLearnClient:
             headers={"Referer": f"{BASE_URL}/2019/student/course_info.aspx?cid={cid}"},
         ).json()
         return data.get("info", [])
+
+    def get_scogeneral(self, cid, uid) -> dict:
+        """课程总览：练习数、已完成数、平均正确率、学习时长。"""
+        return self._get(
+            f"{BASE_URL}/ajax/StudyStat.aspx",
+            params={
+                "action": "scogeneral",
+                "cid": cid,
+                "stuid": uid,
+                "nocache": f"{random.random():.6f}",
+            },
+            headers={"Referer": f"{BASE_URL}/2019/student/course_info.aspx?cid={cid}"},
+        ).json()
 
     # ---- SCO 动作 ----
     def _sco(self, cid, uid, scoid, **form):
