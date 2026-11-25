@@ -30,6 +30,14 @@ class WeLearnError(RuntimeError):
     pass
 
 
+_RET_OK = re.compile(r'"ret"\s*:\s*0')
+
+
+def ret_ok(resp) -> bool:
+    """判断 WeLearn 写接口是否返回 ret:0。"""
+    return bool(_RET_OK.search(resp.text or ""))
+
+
 def _extract(value: str, key: str) -> str:
     for part in value.split("%26"):
         if part.startswith(f"{key}%3D"):
@@ -152,7 +160,8 @@ class WeLearnClient:
             trycount=trycount,
         )
 
-    def submit_course_progress(self, cid, uid, classid, scoid, accuracy) -> bool:
+    def submit_course_progress(self, cid, uid, classid, scoid, accuracy) -> dict:
+        """提交进度；分别返回 setscoinfo / savescoinfo 是否成功。"""
         referer = f"{BASE_URL}/Student/StudyCourse.aspx?cid={cid}&classid={classid}&sco={scoid}"
         headers = {"Referer": referer}
         self._post(
@@ -160,7 +169,7 @@ class WeLearnClient:
             data={"action": "startsco160928", "cid": cid, "scoid": scoid, "uid": uid},
             headers=headers,
         )
-        resp = self._post(
+        sets = self._post(
             f"{BASE_URL}/Ajax/SCO.aspx",
             data={
                 "action": "setscoinfo",
@@ -172,8 +181,7 @@ class WeLearnClient:
             },
             headers=headers,
         )
-        ok = '"ret":0' in resp.text
-        resp = self._post(
+        saves = self._post(
             f"{BASE_URL}/Ajax/SCO.aspx",
             data={
                 "action": "savescoinfo160928",
@@ -188,4 +196,5 @@ class WeLearnClient:
             },
             headers=headers,
         )
-        return ok and '"ret":0' in resp.text
+        ok1, ok2 = ret_ok(sets), ret_ok(saves)
+        return {"setscoinfo": ok1, "savescoinfo": ok2, "ok": ok1 and ok2}

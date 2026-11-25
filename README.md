@@ -1,11 +1,14 @@
 # OmniTask Script · WeLearn（welearn）
 
+> 本仓库是与 OmniTask 主项目相互独立的平台脚本：可以单独安装、单独运行，也可以被 OmniTask（或任何兼容 Host）调用。主项目更新不会自动改变本脚本，本脚本发布也不依赖主项目发版。
+
 WeLearn（welearn.sflep.com）自动挂时长 / 提交进度脚本，适配 [OmniTask](https://github.com/CometNetworkStudio/OmniTask) 平台，也可独立运行。
 
 ## 简介
 
 - 登录后自动完成课程 SCO 的「挂时长」或「提交进度」。
-- 支持按课程 / 单元 / 数量限制选择，跳过已完成与不可见 SCO。
+- 挂时长处理全部可见 SCO；提交进度默认只处理未完成 SCO，可开启含已完成项。
+- 支持按课程 / 单元 / 数量限制选择。
 - 既可被 OmniTask 以子进程（stdio JSON）调用，也可本地 CLI 单跑。
 
 ## 免责声明
@@ -44,7 +47,7 @@ OmniTask 的 Go Host 以子进程启动 `main.py`，经 stdin 下发 `execute`�
 | `unit_idx` | 空(全部) | 单元数字下标（0 起） |
 | `duration` | 60 | 挂时长秒数（`action=time`） |
 | `accuracy` | 100 | 提交进度正确率（`action=progress`） |
-| `include_completed` | false | 是否也处理已完成 SCO |
+| `include_completed` | false | 提交进度时是否重提已完成 SCO（挂时长始终处理全部可见 SCO） |
 | `limit` | 0 | 最多 SCO 数，0=不限 |
 
 ## 凭据

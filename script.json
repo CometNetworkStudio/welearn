@@ -1,7 +1,7 @@
 {
   "id": "welearn",
   "name": "WeLearn",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "CometNetworkStudio",
   "runtime": "python3",
   "entry": "main.py",
@@ -12,11 +12,13 @@
   "actions": [
     {
       "id": "time",
-      "name": "挂时长"
+      "name": "挂时长",
+      "description": "处理全部可见 SCO，按设定秒数模拟学习并保存"
     },
     {
       "id": "progress",
-      "name": "提交进度"
+      "name": "提交进度",
+      "description": "提交未完成 SCO 的进度，可指定正确率"
     }
   ],
   "credentials": [
@@ -36,29 +38,33 @@
       "key": "cid",
       "label": "课程 id",
       "type": "text",
-      "default": ""
+      "default": "",
+      "help": "留空使用账号下的第一门课程"
     },
     {
       "key": "unit_idx",
       "label": "单元下标(0起，空=全部)",
       "type": "text",
-      "default": ""
+      "default": "",
+      "help": "WeLearn 的单元下标从 0 开始"
     },
     {
       "key": "duration",
       "label": "挂时长(秒)",
       "type": "number",
-      "default": 60
+      "default": 60,
+      "help": "每个 SCO 模拟学习的秒数"
     },
     {
       "key": "accuracy",
       "label": "正确率",
       "type": "number",
-      "default": 100
+      "default": 100,
+      "help": "提交进度时写入的正确率"
     },
     {
       "key": "include_completed",
-      "label": "含已完成 SCO",
+      "label": "含已完成 SCO（提交进度）",
       "type": "switch",
       "default": false
     },
@@ -66,7 +72,8 @@
       "key": "limit",
       "label": "最多 SCO 数(0=不限)",
       "type": "number",
-      "default": 0
+      "default": 0,
+      "help": "本次最多处理多少个 SCO"
     }
   ],
   "discovery": {

@@ -8,28 +8,42 @@ from omnitask_sdk.config import Config
 from omnitask_sdk.events import event
 from omnitask_sdk.params import resolve
 from omnitask_sdk.ratelimit import RateLimiter
-from .client import WeLearnClient, WeLearnError
+
+from .client import WeLearnClient, WeLearnError, ret_ok
 
 _CONFIG = Config.from_env()
 
 
-def _is_actionable(item, include_completed: bool) -> bool:
+def _as_int(value, default: int = 0) -> int:
+    if value in (None, ""):
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _is_visible(item) -> bool:
     if not isinstance(item, dict):
         return True
-    if str(item.get("isvisible")) == "false":
-        return False
-    if include_completed:
-        return True
-    return "未" in str(item.get("iscomplete", ""))
+    return str(item.get("isvisible", "")).strip().lower() != "false"
 
 
-def _sco_id(item) -> str | None:
-    if isinstance(item, dict):
-        for key in ("scoid", "sco", "sco_id", "id"):
-            if item.get(key) not in (None, ""):
-                return str(item[key])
+def _entry(item):
+    """返回 (scoid, 名称)；原项目以 id 作为 SCO 标识。"""
+    if not isinstance(item, dict):
+        text = str(item).strip()
+        return (text, "") if text else None
+    scoid = ""
+    for key in ("id", "scoid", "sco", "sco_id"):
+        value = item.get(key)
+        if value not in (None, ""):
+            scoid = str(value)
+            break
+    if not scoid:
         return None
-    return str(item)
+    name = str(item.get("location") or item.get("name") or "")
+    return scoid, name
 
 
 def _pick_course(courses: list, want) -> dict:
@@ -43,24 +57,64 @@ def _pick_course(courses: list, want) -> dict:
     raise WeLearnError(f"未找到课程 cid={want}")
 
 
-def _collect_sco_ids(client, cid, uid, classid, units, params) -> list[str]:
-    """收集待处理 SCO id，按单元去重。
+def _collect_scos(client, cid, uid, classid, units, params, action) -> tuple[list[tuple[str, str]], list[str]]:
+    """收集待处理 SCO，按 id 去重。
 
     注意：WeLearn 的 unitidx 是单元的数字下标（0-based），不是单元 id；
-    传错会导致每个单元返回同一批 SCO。
+    传错会导致每个单元返回同一批 SCO。挂时长处理全部可见 SCO；
+    提交进度默认只处理未完成项，开启 include_completed 后才重提已完成项。
+    返回 (SCO 列表, 单元错误列表)；单个单元失败不影响其他单元。
     """
-    include_completed = str(params.get("include_completed", "")).lower() in ("1", "true", "yes")
-    if params.get("unit_idx") not in (None, ""):
-        items = client.get_sco_leaves(cid, uid, classid, int(params["unit_idx"]))
+    include_completed = str(params.get("include_completed", "")).lower() in ("1", "true", "yes", "on")
+    raw_unit = params.get("unit_idx")
+    if raw_unit in (None, ""):
+        unit_indices = range(len(units))
     else:
-        items = []
-        for unit_index in range(len(units)):
-            items.extend(client.get_sco_leaves(cid, uid, classid, unit_index))
-    actionable = [item for item in items if _is_actionable(item, include_completed)]
-    return list(dict.fromkeys(sid for sid in (_sco_id(item) for item in actionable) if sid))
+        unit_idx = _as_int(raw_unit, -1)
+        if unit_idx < 0:
+            raise WeLearnError(f"单元下标无效: {raw_unit}")
+        unit_indices = [unit_idx]
+
+    seen: set[str] = set()
+    scos: list[tuple[str, str]] = []
+    errors: list[str] = []
+    for unit_index in unit_indices:
+        try:
+            items = client.get_sco_leaves(cid, uid, classid, unit_index)
+        except Exception as exc:  # noqa: BLE001 - 单元失败继续下一个单元
+            errors.append(f"单元 {unit_index + 1}: {exc}")
+            continue
+        for item in items:
+            if not _is_visible(item):
+                continue
+            if action != "time" and not include_completed:
+                if "未" not in str(item.get("iscomplete", "")):
+                    continue
+            entry = _entry(item)
+            if entry is None or entry[0] in seen:
+                continue
+            seen.add(entry[0])
+            scos.append(entry)
+    return scos, errors
+
+
+def _fail_text(detail) -> str:
+    if isinstance(detail, dict):
+        return "setscoinfo=%s, savescoinfo=%s" % (
+            "成功" if detail.get("setscoinfo") else "失败",
+            "成功" if detail.get("savescoinfo") else "失败",
+        )
+    return str(detail)
+
+
+def _pct(value) -> int:
+    """单个 SCO 的事件最高 99，100 保留给任务完成。"""
+    return min(99, max(0, int(value)))
 
 
 def run(action: str, params: dict, credentials: dict):
+    if action not in ("time", "progress"):
+        raise WeLearnError(f"未知动作: {action}")
     username = credentials.get("username") or params.get("username")
     password = credentials.get("password") or params.get("password")
     if not username or not password:
@@ -83,33 +137,65 @@ def run(action: str, params: dict, credentials: dict):
     info = client.get_course_info(cid)
     uid, classid = info["uid"], info["classid"]
 
-    include_completed = str(params.get("include_completed", "")).lower() in ("1", "true", "yes")
-    include_completed = str(params.get("include_completed", "")).lower() in ("1", "true", "yes")
-    scoids = _collect_sco_ids(client, cid, uid, classid, info["units"], resolved)
-    limit = resolved.get("limit")
-    if limit:
-        scoids = scoids[: int(limit)]
-    if not scoids:
-        yield event(100, "没有未完成的 SCO")
+    scos, unit_errors = _collect_scos(client, cid, uid, classid, info["units"], resolved, action)
+    for err in unit_errors:
+        yield event(6, f"[警告] {err}")
+    limit = _as_int(resolved.get("limit"), 0)
+    if limit > 0:
+        scos = scos[:limit]
+    if not scos:
+        if unit_errors:
+            raise WeLearnError(f"获取 SCO 失败: {unit_errors[0]}")
+        yield event(
+            100,
+            "没有可处理的 SCO",
+            {"total": 0, "succeeded": 0, "failed": 0, "units_failed": 0},
+        )
         return
-    yield event(8, f"待处理 SCO 数 {len(scoids)}")
+    yield event(8, f"待处理 SCO 数 {len(scos)}")
 
-    duration = int(resolved.get("duration", 60))
-    accuracy = resolved.get("accuracy", "100")
-    for index, scoid in enumerate(scoids, start=1):
-        base = (index - 1) / len(scoids) * 92 + 8
-        if action == "progress":
-            client.submit_course_progress(cid, uid, classid, scoid, accuracy)
-            yield event(int(base + 92 / len(scoids)), f"SCO {scoid} 进度已提交")
-            continue
-        client.start_sco(cid, uid, scoid)
-        for elapsed in range(1, duration + 1):
-            time.sleep(1)
-            if elapsed % 60 == 0:
-                client.keep_sco(cid, uid, scoid)
-            if elapsed % 10 == 0:
-                within = elapsed / duration * (92 / len(scoids))
-                yield event(int(base + within), f"SCO {scoid} 已挂 {elapsed}s/{duration}s")
-        client.save_sco(cid, uid, scoid)
-        yield event(int(base + 92 / len(scoids)), f"SCO {scoid} 完成")
-    yield event(100, "全部 SCO 处理完成")
+    duration = max(1, _as_int(resolved.get("duration"), 60))
+    accuracy = str(resolved.get("accuracy", 100) or 100)
+    succeeded = 0
+    failed: list[tuple[str, object]] = []
+    for index, (scoid, name) in enumerate(scos, start=1):
+        label = name or scoid
+        base = (index - 1) / len(scos) * 92 + 8
+        try:
+            if action == "progress":
+                result = client.submit_course_progress(cid, uid, classid, scoid, accuracy)
+                if result["ok"]:
+                    succeeded += 1
+                    yield event(_pct(base + 92 / len(scos)), f"[完成] {label}")
+                else:
+                    failed.append((label, result))
+                    yield event(_pct(base + 92 / len(scos)), f"[失败] {label} {_fail_text(result)}")
+                continue
+
+            client.start_sco(cid, uid, scoid)
+            for elapsed in range(1, duration + 1):
+                time.sleep(1)
+                if elapsed % 60 == 0:
+                    client.keep_sco(cid, uid, scoid)
+                if elapsed % 10 == 0 or elapsed == duration:
+                    within = elapsed / duration * (92 / len(scos))
+                    yield event(_pct(base + within), f"[进行] {label} 已挂 {elapsed}s/{duration}s")
+            resp = client.save_sco(cid, uid, scoid)
+            if ret_ok(resp):
+                succeeded += 1
+                yield event(_pct(base + 92 / len(scos)), f"[完成] {label}")
+            else:
+                failed.append((label, "savescoinfo 未返回 ret:0"))
+                yield event(_pct(base + 92 / len(scos)), f"[失败] {label} 保存未确认")
+        except Exception as exc:  # noqa: BLE001 - 单个 SCO 失败不中断整个任务
+            failed.append((label, str(exc)))
+            yield event(_pct(base + 92 / len(scos)), f"[失败] {label}: {exc}")
+
+    if succeeded == 0:
+        raise WeLearnError(f"全部 SCO 处理失败: {_fail_text(failed[0][1])}")
+    message = "全部 SCO 处理完成" if not failed else f"完成 {succeeded}/{len(scos)}，失败 {len(failed)}"
+    yield event(
+        100,
+        message,
+        {"total": len(scos), "succeeded": succeeded, "failed": len(failed), "units_failed": len(unit_errors)},
+    )
