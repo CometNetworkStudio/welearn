@@ -33,7 +33,7 @@ python main.py --cli \
 ```
 
 - `--action`：`time`（挂时长）/ `progress`（提交进度）。
-- `--param k=v` / `--credential k=v`：可重复，见 `script.json`。
+- `--param k=v` / `--credential k=v`：可重复，见 `omnitask.json`。
 
 ### 方式二：OmniTask 平台调用
 
@@ -66,7 +66,7 @@ OmniTask 的 Go Host 以子进程启动 `main.py`，经 stdin 下发 `execute`�
 ├── main.py         # 入口（Host 模式 / CLI）
 ├── cli.py          # 本地命令行
 ├── requirements.txt# 依赖（安装 omnitask-sdk）
-└── script.json     # manifest
+└── omnitask.json     # manifest
 ```
 
 ## License
